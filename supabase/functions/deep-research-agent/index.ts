@@ -113,9 +113,4 @@ resonate.setDependency(
 	}),
 );
 
-Deno.serve(async (req: Request) => {
-	const resp = await resonate.handler(req);
-	return new Response(JSON.stringify(resp), {
-		headers: { "Content-Type": "application/json", Connection: "keep-alive" },
-	});
-});
+resonate.httpHandler();

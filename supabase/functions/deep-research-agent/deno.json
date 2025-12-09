@@ -1,7 +1,7 @@
 {
-  "imports": {
-    "@resonatehq/supabase": "npm:@resonatehq/supabase@^0.1.3",
-    "@resonatehq/sdk": "npm:@resonatehq/sdk",
-    "openai": "npm:openai@^6.10.0"
-  }
+	"imports": {
+		"@resonatehq/supabase": "npm:@resonatehq/supabase@^0.1.4",
+		"@resonatehq/sdk": "npm:@resonatehq/sdk",
+		"openai": "npm:openai@^6.10.0"
+	}
 }
