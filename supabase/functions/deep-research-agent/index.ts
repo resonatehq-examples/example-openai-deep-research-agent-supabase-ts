@@ -76,7 +76,7 @@ export function* research(
 		// Handle parallel tool calls by recursively starting the deep research agent
 		// and subsequently awaiting the results
 		if (message.tool_calls) {
-			const handles = [];
+			const handles: any[] = [];
 			for (const tool_call of message.tool_calls) {
 				const tool_name = tool_call.function.name;
 				const tool_args = JSON.parse(tool_call.function.arguments);
