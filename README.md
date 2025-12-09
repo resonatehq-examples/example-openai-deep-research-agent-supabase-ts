@@ -1,42 +1,63 @@
-# Resonate Countdown on Supabase Edge Functions
+# Deep Research Agent on Supabase Edge Functions
 
-A *Countdown* powered by the Resonate Typescript SDK and Supabase Edge Functions. The countdown sends periodic notifications to [ntfy.sh](https://ntfy.sh/) at configurable intervals.
+A Research Agent powered by Resonate and OpenAI, running on Supabase Edge Functions. The Research Agent is a distributed, recursive agent that breaks a research topic into subtopics, researches each subtopic recursively, and synthesizes the results.
 
-## Behind the Scenes
+![Deep Research Agent Demo](doc/research-agent.jpeg)
 
-The Countdown is implemented with Resonate's Durable Execution framework, Distributed Async Await. The Countdown is a simple loop that can sleep for hours, days, or weeks. On `yield ctx.sleep` the countdown function suspends (terminates), immediately completing the Supabase Edge Function execution. After the specified delay, Resonate will resume (restart) the countdown function by triggering a new Supabase Edge Function execution.
+## How It Works
+
+This example demonstrates how complex, distributed agentic applications can be implemented with simple code in Resonate's Distributed Async Await: The research agent is a recursive generator function that breaks down topics into subtopics and invokes itself for each subtopic:
 
 ```typescript
-export function* countdown(
-	ctx: Context,
-	count: number,
-	delay: number,
-	url: string,
-) {
-	for (let i = count; i > 0; i--) {
-		// send notification to ntfy.sh
-		yield* ctx.run(notify, url, `Countdown: ${i}`);
-		// sleep creates a suspension point causing
-		// the Supabase Edge Function execution to terminate
-		yield* ctx.sleep(delay * 60 * 1000);
-	}
-	// send the last notification to ntfy.sh
-	yield* ctx.run(notify, url, `Done`);
+function* research(ctx, topic, depth) {
+  const messages = [
+    { role: "system", content: "Break topics into subtopics..." },
+    { role: "user", content: `Research ${topic}` }
+  ];
+
+  while (true) {
+    // Ask the LLM about the topic
+    const response = yield* ctx.run(prompt, messages, ...);
+    messages.push(response);
+
+    // If LLM wants to research subtopics...
+    if (response.tool_calls) {
+      const handles = [];
+
+      // Spawn parallel research for each subtopic
+      for (const tool_call of response.tool_calls) {
+        const subtopic = ...;
+        const handle = yield* ctx.beginRpc(research, subtopic, depth - 1);
+        handles.push([tool_call, handle]);
+      }
+
+      // Wait for all subtopic results
+      for (const [tool_call, handle] of handles) {
+        const result = yield* handle;
+        messages.push({ role: "tool", ..., content: result });
+      }
+    } else {
+      // LLM provided final summary
+      return response.content;
+    }
+  }
 }
 ```
 
-**Key Concepts:**
+The following video visualizes how this recursive pattern creates a dynamic call graph, spawning parallel research branches that fan out as topics are decomposed, then fan back in as results are synthesized:
 
-- **Suspension and Resumption:** Executions can be suspended for any amount of time
-- **Stateful executions on stateless infrastructure:** Short-lived function instances executing one step of a long-lived execution coordinated by the Resonate Server.
+https://github.com/user-attachments/assets/cf466675-def3-4226-9233-a680cd7e9ecb
 
-![Deep Research Agent Demo](doc/mechanics.jpg)
+**Key concepts:**
+- **Concurrent Execution**: Multiple subtopics are researched concurrently via `ctx.beginRpc`
+- **Coordination**: Handles are collected first, then awaited together (fork/join, fan-out/fan-in)
+- **Depth control**: Recursion stops when `depth` reaches 0
 
 ---
 
 # Running the Example
 
-You can run the Countdown locally on your machine with Supabase CLI or you can deploy the Countdown to Supabase Platform.
+You can run the Deep Research Agent locally on your machine with [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started?queryGroups=platform&platform=macos) or you can deploy the agent to Supabase Platform.
 
 ## 1. Running Locally
 
@@ -50,6 +71,13 @@ brew install resonatehq/tap/resonate
 
 Install the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started?queryGroups=platform&platform=macos)
 
+
+To run this project you also need an [OpenAI API Key](https://platform.openai.com) and export the key as an environment variable
+
+```
+export OPENAI_API_KEY="sk-..."
+```
+
 ### 1.2. Start Supabase locally
 
 ```
@@ -61,8 +89,8 @@ supabase start
 Clone the repository
 
 ```
-git clone https://github.com/resonatehq-examples/example-countdown-supabase-ts
-cd example-countdown-supabase-ts
+git clone https://github.com/resonatehq-examples/example-openai-deep-research-agent-supabase-ts
+cd example-openai-deep-research-agent-supabase-ts
 ```
 
 Install dependencies
@@ -74,7 +102,7 @@ npm install
 ### 1.4. Serve the Countdown function
 
 ```
-supabase functions serve countdown
+supabase functions serve deep-research-agent
 ```
 
 ### 1.5 Start the resonate worker behind ngrok
@@ -93,56 +121,39 @@ Example
 resonate dev --system-url  https://583ef7749990.ngrok-free.app
 ```
 
-### 1.5. Invoke the Countdown
 
-The examples use ntfy.sh to send notifications. Create a unique channel name (to avoid receiving notifications from other users) and open the ntfy.sh channel in your browser.
+### 1.6. Invoke the Deep Research Agent
 
-```
-echo https://ntfy.sh/resonatehq-$RANDOM
-```
-
-Start a countdown
+Start a research task
 
 ```
-resonate invoke <promise-id> --func countdown --arg <count> --arg <delay-in-minutes> --arg https://ntfy.sh/<channel> --target <function-url>
+resonate invoke <promise-id> --func research --arg <topic> --arg <depth> --target <function-url>
 ```
 
 Example
 
 ```
-resonate invoke countdown.1 --func countdown --arg 5 --arg 1 --arg https://ntfy.sh/resonatehq-17905 --target http://127.0.0.1:54321/functions/v1/countdown
+resonate invoke research.1 --func research --arg "What are distributed systems" --arg 1 --target http://127.0.0.1:54321/functions/v1/deep-research-agent
 ```
 
-### 1.6. Inspect the execution
+### 1.7. Inspect the execution
 
-Use the `resonate tree` command to visualize the countdown execution.
-
-```
-resonate tree countdown.1
-```
-
-Example output (while waiting on the second sleep):
+Use the `resonate tree` command to visualize the research execution.
 
 ```
-countdown.1
-├── countdown.1.0 🟢 (run)
-├── countdown.1.1 🟢 (sleep)
-├── countdown.1.2 🟢 (run)
-└── countdown.1.3 🟡 (sleep)
+resonate tree research.1
 ```
 
-## 2. Deploying to Supabase
-
-This section guides you through deploying the countdown example to Supabase Platform using Workers for the countdown function.
-
-### 2.1 Prerequisites
-
-#### Resonate
-
-Install the Resonate Server & CLI with [Homebrew](https://docs.resonatehq.io/operate/run-server#install-with-homebrew) or download the latest release from [Github](https://github.com/resonatehq/resonate/releases).
 
 ```
-brew install resonatehq/tap/resonate
+research.1
+├── research.1.0 🟢 (run)
+├── research.1.1 🟡 (rpc research)
+│   └── research.1.1.0 🟡 (run)
+├── research.1.2 🟡 (rpc research)
+│   └── research.1.2.0 🟡 (run)
+└── research.1.3 🟡 (rpc research)
+    └── research.1.3.0 🟡 (run)
 ```
 
 #### Supabase
@@ -152,7 +163,7 @@ Install the [Supabase CLI](https://supabase.com/docs/guides/local-development/cl
 ### 2.1 Deploy your function
 
 ```
-supabase functions deploy countdown --project-ref <PROJECT_ID>
+supabase functions deploy deep-research-agent --project-ref <PROJECT_ID>
 ```
 
 ### 2.2 Start the resonate worker behind ngrok
@@ -171,24 +182,18 @@ Example
 resonate dev --system-url  https://583ef7749990.ngrok-free.app
 ```
 
-### 2.4 Invoke the Countdown
+### 2.4 Invoke the Deep Research Agent
 
-The examples use ntfy.sh to send notifications. Create a unique channel name (to avoid receiving notifications from other users) and open the ntfy.sh channel in your browser.
-
-```
-echo https://ntfy.sh/resonatehq-$RANDOM
-```
-
-Start a countdown
+Start a research task
 
 ```
-resonate invoke <promise-id> --func countdown --arg <count> --arg <delay-in-minutes> --arg https://ntfy.sh/<channel> --target $FUNCTION_URL
+resonate invoke <promise-id> --func research --arg <topic> --arg <depth> --target <function-url>
 ```
 
 Example
 
 ```
-resonate invoke countdown.1 --func countdown --arg 5 --arg 1 --arg https://ntfy.sh/resonatehq-17905 --target https://<orgID>.supabase.co/functions/v1/countdown
+resonate invoke research.1 --func research --arg "What are distributed systems" --arg 1 --target https://wryfyvstwcwpjaulrdmx.supabase.co/functions/v1/deep-research-agent
 ```
 
 ### 2.5. Inspect the execution
@@ -196,23 +201,24 @@ resonate invoke countdown.1 --func countdown --arg 5 --arg 1 --arg https://ntfy.
 Use the `resonate tree` command to visualize the countdown execution.
 
 ```
-resonate tree countdown.1
+resonate tree research.1
 ```
 
 Example output (while waiting on the second sleep):
 
 ```
-countdown.1
-├── countdown.1.0 🟢 (run)
-├── countdown.1.1 🟢 (sleep)
-├── countdown.1.2 🟢 (run)
-└── countdown.1.3 🟡 (sleep)
+research.1
+├── research.1.0 🟢 (run)
+├── research.1.1 🟢 (rpc research)
+│   └── research.1.1.0 🟢 (run)
+├── research.1.2 🟢 (rpc research)
+│   └── research.1.2.0 🟢 (run)
+├── research.1.3 🟡 (rpc research)
+├── research.1.4 🟢 (rpc research)
+│   └── research.1.4.0 🟢 (run)
+└── research.1.5 🟢 (rpc research)
+    └── research.1.5.0 🟢 (run)
 ```
 
 ## Troubleshooting
-
-If everything is configured correctly, you will see notifications in your ntfy.sh workspace.
-
-![ntfy logo](doc/ntfy.png)
-
-If you are still having trouble please [open an issue](https://github.com/resonatehq-examples/example-countdown-supabase-ts/issues).
+If you are still having trouble please [open an issue](https://github.com/resonatehq-examples/example-openai-deep-research-agent-supabase-ts/issues).
