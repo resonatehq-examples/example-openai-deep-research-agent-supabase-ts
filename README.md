@@ -78,6 +78,8 @@ To run this project you also need an [OpenAI API Key](https://platform.openai.co
 export OPENAI_API_KEY="sk-..."
 ```
 
+and write it to a `.env` file at `supabase/functions/.env`. [see](https://supabase.com/docs/guides/functions/secrets#local-secrets)
+
 ### 1.2. Start Supabase locally
 
 ```
@@ -160,6 +162,11 @@ research.1
 
 Install the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started?queryGroups=platform&platform=macos)
 
+### 2.1 Deploy your secrets
+```
+supabase secrets set --env-file supabase/functions/.env
+```
+
 ### 2.1 Deploy your function
 
 ```
@@ -193,7 +200,7 @@ resonate invoke <promise-id> --func research --arg <topic> --arg <depth> --targe
 Example
 
 ```
-resonate invoke research.1 --func research --arg "What are distributed systems" --arg 1 --target https://wryfyvstwcwpjaulrdmx.supabase.co/functions/v1/deep-research-agent
+resonate invoke research.1 --func research --arg "What are distributed systems" --arg 1 --target https://<orgId>.supabase.co/functions/v1/deep-research-agent
 ```
 
 ### 2.5. Inspect the execution
