@@ -110,7 +110,7 @@ resonate.setDependency(
 	"aiclient",
 	new OpenAI({
 		apiKey:
-			"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",
+			"sk-proj-...,
 	}),
 );
 
