@@ -71,14 +71,7 @@ brew install resonatehq/tap/resonate
 
 Install the [Supabase CLI](https://supabase.com/docs/guides/local-development/cli/getting-started?queryGroups=platform&platform=macos)
 
-
-To run this project you also need an [OpenAI API Key](https://platform.openai.com) and export the key as an environment variable
-
-```
-export OPENAI_API_KEY="sk-..."
-```
-
-and write it to a `.env` file at `supabase/functions/.env`. [see](https://supabase.com/docs/guides/functions/secrets#local-secrets)
+To run this project you will also need to add an [OpenAI API Key](https://platform.openai.com) to the `supabase/functions/.env` file. See the [supabase docs](https://supabase.com/docs/guides/functions/secrets#local-secrets) for more information.
 
 ### 1.2. Start Supabase locally
 
@@ -107,20 +100,10 @@ npm install
 supabase functions serve deep-research-agent
 ```
 
-### 1.5 Start the resonate worker behind ngrok
+### 1.5 Start the resonate server
 
 ```
-ngrok http 8001
-```
-
-```
-resonate dev --system-url  <ngrok-url>
-```
-
-Example
-
-```
-resonate dev --system-url  https://583ef7749990.ngrok-free.app
+resonate dev --system-url http://host.docker.internal:8001
 ```
 
 
@@ -144,10 +127,7 @@ Use the `resonate tree` command to visualize the research execution.
 
 ```
 resonate tree research.1
-```
 
-
-```
 research.1
 ├── research.1.0 🟢 (run)
 ├── research.1.1 🟡 (rpc research)
@@ -156,6 +136,12 @@ research.1
 │   └── research.1.2.0 🟡 (run)
 └── research.1.3 🟡 (rpc research)
     └── research.1.3.0 🟡 (run)
+```
+
+You can also see the result with `resonate promises get`:
+
+```
+resonate promises get research.1
 ```
 
 #### Supabase
@@ -180,7 +166,7 @@ ngrok http 8001
 ```
 
 ```
-resonate dev --system-url  <ngrok-url>
+resonate dev --system-url <ngrok-url>
 ```
 
 Example
@@ -225,6 +211,12 @@ research.1
 │   └── research.1.4.0 🟢 (run)
 └── research.1.5 🟢 (rpc research)
     └── research.1.5.0 🟢 (run)
+```
+
+You can also see the result with `resonate promises get`:
+
+```
+resonate promises get research.1
 ```
 
 ## Troubleshooting
